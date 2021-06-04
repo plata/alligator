@@ -11,6 +11,7 @@
 #include <QFileInfo>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
+#include <QProcess>
 #include <QStandardPaths>
 #include <QTextDocumentFragment>
 
@@ -125,6 +126,19 @@ void Fetcher::processEntry(Syndication::ItemPtr entry, const QString &url)
         query.bindValue(QStringLiteral(":content"), entry->content());
     } else {
         query.bindValue(QStringLiteral(":content"), entry->description());
+    }
+
+    QStringList arguments;
+    arguments << QStringLiteral("-H") << entry->link();
+
+    QProcess rdrViewProcess;
+    rdrViewProcess.start(QStringLiteral("rdrview"), arguments);
+
+    if (rdrViewProcess.waitForStarted()) {
+        if (rdrViewProcess.waitForFinished()) {
+            QByteArray html = rdrViewProcess.readAll();
+            query.bindValue(QStringLiteral(":content"), html);
+        }
     }
 
     Database::instance().execute(query);
